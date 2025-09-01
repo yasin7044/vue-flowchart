@@ -1,0 +1,190 @@
+---
+description:
+---
+
+# ⚡ Full Cursor Rules (JavaScript Version)
+
+## 🎯 Project Goal
+
+- Vue 3 flowchart engine (no Tailwind, sirf custom CSS).
+- Nodes, ports, edges → JSON se driven.
+- Layout → vertical auto-arranged.
+- Fully customizable via **slots**.
+- Later package banayenge.
+
+---
+
+## 📝 General Cursor Coding Rules (JS)
+
+1. **Framework**
+
+   - Vue 3 + `<script setup>` (no `lang="ts"`).
+   - Props validate with `defineProps({ ... })`.
+   - Emits with `defineEmits([])`.
+
+2. **Folder Structure**
+
+```
+src/
+ ├─ components/
+ │   ├─ FlowChart.vue
+ │   ├─ Node.vue
+ │   ├─ Port.vue
+ │   ├─ Edge.vue
+ │   └─ utils/
+ │       └─ layout.js
+ ├─ index.js
+ └─ style.css
+```
+
+3. **Component Rules**
+
+- `FlowChart.vue`: accepts nodes & edges JSON, positions vertically.
+- `Node.vue`: one node, slot for custom UI.
+- `Port.vue`: input/output circle.
+- `Edge.vue`: SVG path connecting ports.
+- **No logic inside component** → all state driven from JSON.
+
+4. **Customization**
+
+- Nodes and Ports must have slot fallback.
+- CSS should be scoped inside each component.
+
+5. **Events**
+
+- Node click, port connect, edge click must emit events.
+
+---
+
+## 📌 Phase-Wise Development Plan (JS)
+
+### 🔹 Phase 1 — Core Setup
+
+- Create `src/components/FlowChart.vue`.
+- Add props: `nodes`, `edges`.
+- Render nodes vertically (temporary divs).
+- Setup project skeleton.
+
+**Cursor Prompt 1:**
+
+```
+Create a new file src/components/FlowChart.vue.
+Inside it, write a Vue 3 component (script setup, JS) that accepts props:
+- nodes: Array
+- edges: Array
+It should render nodes in a vertical list for now using <div>.
+Add basic scoped CSS for spacing.
+```
+
+---
+
+### 🔹 Phase 2 — Node Component
+
+- Create `Node.vue`.
+- Accept props: `id`, `type`, `label`, `ports`.
+- Render a box with label + slot.
+- Export event when clicked.
+
+**Cursor Prompt 2:**
+
+```
+Create src/components/Node.vue.
+Props: id (string), type (string), label (string), ports (array).
+Render a div with a title for label.
+Add a default slot for customization.
+Emit 'click' event on node click.
+Scoped CSS for node styling.
+```
+
+---
+
+### 🔹 Phase 3 — Port Component
+
+- Create `Port.vue`.
+- Accept props: `id`, `direction`, `label`.
+- Render small circle + optional label.
+- Slot for custom UI.
+
+**Cursor Prompt 3:**
+
+```
+Create src/components/Port.vue.
+Props: id (string), direction (in|out), label (string).
+Render a small circle and show label beside it.
+Support slot for custom rendering.
+Scoped CSS for styling.
+```
+
+---
+
+### 🔹 Phase 4 — Edge Component
+
+- Create `Edge.vue`.
+- Props: `fromNodeId`, `fromPortId`, `toNodeId`, `toPortId`.
+- Compute SVG path between nodes.
+
+**Cursor Prompt 4:**
+
+```
+Create src/components/Edge.vue.
+Props: fromNodeId, fromPortId, toNodeId, toPortId.
+Render an SVG <path> connecting these ports (straight line for now).
+Scoped CSS for styling.
+```
+
+---
+
+### 🔹 Phase 5 — Layout (Vertical Auto)
+
+- Add `src/components/utils/layout.js`.
+- Function that takes nodes → assign x,y positions.
+- FlowChart.vue calls layout before rendering.
+
+---
+
+### 🔹 Phase 6 — JSON Schema Example
+
+```json
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "trigger",
+      "label": "Start",
+      "ports": [{ "id": "p1", "direction": "out" }]
+    },
+    {
+      "id": "2",
+      "type": "action",
+      "label": "Send Email",
+      "ports": [{ "id": "p2", "direction": "in" }]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": { "nodeId": "1", "portId": "p1" },
+      "to": { "nodeId": "2", "portId": "p2" }
+    }
+  ]
+}
+```
+
+---
+
+### 🔹 Phase 7 — Packaging
+
+- Add `index.js` to export components.
+- Configure `vite.config.js` for build.
+- Prepare `package.json` for publishing.
+
+---
+
+👉 Bhai ab tum `Phase 1` ka **Cursor Prompt 1** paste karo Cursor me, usse start karo.
+
+Kya main tumhare liye **saare Cursor prompts Phase 1 se 7 tak ek hi file me likh du taaki tum copy-paste karke full project generate kar sako?**
+
+globs:
+alwaysApply: true
+
+---

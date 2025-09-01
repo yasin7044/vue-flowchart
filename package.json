@@ -1,18 +1,52 @@
 {
-  "name": "vueflowchart",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "vue-flowchart-engine",
+  "version": "1.0.0",
+  "description": "A powerful Vue 3 flowchart engine with JSON-driven data, auto-layout, and customizable nodes",
+  "main": "dist/vue-flowchart-engine.umd.js",
+  "module": "dist/vue-flowchart-engine.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/vue-flowchart-engine.es.js",
+      "require": "./dist/vue-flowchart-engine.umd.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:lib": "vite build --config vite.lib.config.js",
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.18"
+    "@vueuse/core": "^10.11.1",
+    "vue": "^3.4.0"
   },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
-    "vite": "^7.1.2"
-  }
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "flowchart",
+    "diagram",
+    "workflow",
+    "nodes",
+    "edges",
+    "auto-layout",
+    "json-driven",
+    "customizable"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/vue-flowchart-engine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/vue-flowchart-engine/issues"
+  },
+  "homepage": "https://github.com/yourusername/vue-flowchart-engine#readme"
 }
