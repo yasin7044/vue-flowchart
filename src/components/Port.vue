@@ -2,7 +2,6 @@
   <div class="port" :class="`port-${direction}`" @click="handleClick">
     <slot>
       <div class="port-default">
-        <div class="port-circle" :class="`circle-${direction}`"></div>
         <span class="port-label">{{ label }}</span>
       </div>
     </slot>
@@ -41,71 +40,109 @@ const handleClick = () => {
 .port {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  justify-content: center;
+  padding: 8px 16px;
   border-radius: 20px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
+  position: relative;
+  min-width: 60px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.port::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.port:hover::before {
+  left: 100%;
 }
 
 .port:hover {
-  background: #e9ecef;
-  border-color: #007bff;
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .port-in {
-  justify-content: flex-start;
+  border-color: #28a745;
+  background: linear-gradient(
+    135deg,
+    rgba(40, 167, 69, 0.1) 0%,
+    rgba(40, 167, 69, 0.05) 100%
+  );
+}
+
+.port-in:hover {
+  border-color: #1e7e34;
+  background: linear-gradient(
+    135deg,
+    rgba(40, 167, 69, 0.2) 0%,
+    rgba(40, 167, 69, 0.1) 100%
+  );
 }
 
 .port-out {
-  justify-content: flex-end;
+  border-color: #007bff;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 123, 255, 0.1) 0%,
+    rgba(0, 123, 255, 0.05) 100%
+  );
+}
+
+.port-out:hover {
+  border-color: #0056b3;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 123, 255, 0.2) 0%,
+    rgba(0, 123, 255, 0.1) 100%
+  );
 }
 
 .port-default {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.port-circle {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 0 0 2px #007bff;
-  transition: all 0.2s ease;
-}
-
-.circle-in {
-  background: #28a745;
-  box-shadow: 0 0 0 2px #28a745;
-}
-
-.circle-out {
-  background: #007bff;
-  box-shadow: 0 0 0 2px #007bff;
-}
-
-.port:hover .port-circle {
-  transform: scale(1.2);
+  justify-content: center;
 }
 
 .port-label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: #495057;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 .port-in .port-label {
-  margin-left: 4px;
+  color: #155724;
 }
 
 .port-out .port-label {
-  margin-right: 4px;
+  color: #004085;
+}
+
+.port:hover .port-label {
+  color: #212529;
 }
 </style>

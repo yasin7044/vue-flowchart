@@ -12,6 +12,7 @@
         :from-position="edge.fromPosition"
         :to-position="edge.toPosition"
         :type="edge.type"
+        :label="edge.label"
         @click="handleEdgeClick"
       />
 
@@ -39,15 +40,30 @@
 
     <!-- Zoom controls -->
     <div class="zoom-controls" v-if="showZoomControls">
-      <button @click="zoomIn" :disabled="scale >= maxZoom" class="zoom-btn">
+      <button
+        @click="zoomIn"
+        :disabled="scale >= maxZoom"
+        class="zoom-btn"
+        title="Zoom In (Ctrl/Cmd + +)"
+      >
         <span>+</span>
       </button>
-      <button @click="zoomOut" :disabled="scale <= minZoom" class="zoom-btn">
+      <button
+        @click="zoomOut"
+        :disabled="scale <= minZoom"
+        class="zoom-btn"
+        title="Zoom Out (Ctrl/Cmd + -)"
+      >
         <span>−</span>
       </button>
-      <button @click="resetZoom" class="zoom-btn">
+      <button
+        @click="resetZoom"
+        class="zoom-btn"
+        title="Reset Zoom (Ctrl/Cmd + 0)"
+      >
         <span>⌂</span>
       </button>
+      <div class="zoom-level">{{ Math.round(scale * 100) }}%</div>
     </div>
   </div>
 </template>
@@ -118,8 +134,8 @@ const isDragging = ref(false)
 const lastMousePos = ref({ x: 0, y: 0 })
 
 // Zoom limits
-const minZoom = 0.1
-const maxZoom = 3
+const minZoom = 0.2
+const maxZoom = 5
 
 // Mouse tracking
 const { x: mouseX, y: mouseY } = useMouse()
@@ -208,19 +224,19 @@ const getNodeStyle = (node) => {
 }
 
 // Zoom functions
-const zoomIn = useThrottleFn(() => {
+const zoomIn = () => {
   if (scale.value < maxZoom) {
-    scale.value = Math.min(maxZoom, scale.value * 1.2)
+    scale.value = Math.min(maxZoom, scale.value * 1.3)
     emit('zoom-change', { scale: scale.value })
   }
-}, 100)
+}
 
-const zoomOut = useThrottleFn(() => {
+const zoomOut = () => {
   if (scale.value > minZoom) {
-    scale.value = Math.max(minZoom, scale.value / 1.2)
+    scale.value = Math.max(minZoom, scale.value / 1.3)
     emit('zoom-change', { scale: scale.value })
   }
-}, 100)
+}
 
 const resetZoom = () => {
   scale.value = 1
@@ -231,18 +247,18 @@ const resetZoom = () => {
 }
 
 // Mouse wheel zoom
-const handleWheel = useThrottleFn((event) => {
+const handleWheel = (event) => {
   if (!props.enableZoom) return
 
   event.preventDefault()
-  const delta = event.deltaY > 0 ? 0.9 : 1.1
+  const delta = event.deltaY > 0 ? 0.85 : 1.15
   const newScale = Math.max(minZoom, Math.min(maxZoom, scale.value * delta))
 
   if (newScale !== scale.value) {
     scale.value = newScale
     emit('zoom-change', { scale: scale.value })
   }
-}, 50)
+}
 
 // Pan functionality
 const startPan = () => {
@@ -251,7 +267,7 @@ const startPan = () => {
   lastMousePos.value = { x: mouseX.value, y: mouseY.value }
 }
 
-const updatePan = useThrottleFn(() => {
+const updatePan = () => {
   if (!isDragging.value || !props.enablePan) return
 
   const deltaX = mouseX.value - lastMousePos.value.x
@@ -262,7 +278,7 @@ const updatePan = useThrottleFn(() => {
 
   lastMousePos.value = { x: mouseX.value, y: mouseY.value }
   emit('pan-change', { x: translateX.value, y: translateY.value })
-}, 16) // ~60fps
+}
 
 const stopPan = () => {
   isDragging.value = false
@@ -273,6 +289,22 @@ useEventListener(containerRef, 'wheel', handleWheel, { passive: false })
 useEventListener(containerRef, 'mousedown', startPan)
 useEventListener(window, 'mousemove', updatePan)
 useEventListener(window, 'mouseup', stopPan)
+
+// Keyboard shortcuts for zoom
+useEventListener(window, 'keydown', (event) => {
+  if (event.ctrlKey || event.metaKey) {
+    if (event.key === '=' || event.key === '+') {
+      event.preventDefault()
+      zoomIn()
+    } else if (event.key === '-') {
+      event.preventDefault()
+      zoomOut()
+    } else if (event.key === '0') {
+      event.preventDefault()
+      resetZoom()
+    }
+  }
+})
 
 // Save preferences when they change
 watch([scale, translateX, translateY], () => {
@@ -337,6 +369,11 @@ const handleEdgeClick = (edgeData) => {
   flex-direction: column;
   gap: 8px;
   z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .zoom-btn {
@@ -366,6 +403,17 @@ const handleEdgeClick = (edgeData) => {
 .zoom-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.zoom-level {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 6px;
+  margin-top: 4px;
 }
 
 /* Ensure nodes are above edges */

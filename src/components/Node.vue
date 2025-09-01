@@ -49,7 +49,6 @@
         @mouseenter="handlePortHover(port, true)"
         @mouseleave="handlePortHover(port, false)"
       >
-        <div class="port-circle" :class="`circle-${port.direction}`"></div>
         <span class="port-label">{{ port.label || port.id }}</span>
       </div>
     </div>
@@ -196,7 +195,7 @@ const getDefaultIcon = (type) => {
 
 const getDefaultDescription = (type) => {
   const descriptions = {
-    trigger: 'Starts the workflow',
+    trigger: '',
     decision: 'Makes a decision',
     action: 'Performs an action',
     prompt: 'Requests user input',
@@ -206,17 +205,17 @@ const getDefaultDescription = (type) => {
 }
 
 // Event handlers
-const handleClick = useThrottleFn(() => {
+const handleClick = () => {
   emit('click', { id: props.id, type: props.type, label: props.label })
-}, 100)
+}
 
-const handlePortClick = useThrottleFn((port) => {
+const handlePortClick = (port) => {
   emit('port-click', { nodeId: props.id, port })
-}, 100)
+}
 
-const handlePortHover = useThrottleFn((port, isHovering) => {
+const handlePortHover = (port, isHovering) => {
   emit('port-hover', { nodeId: props.id, port, isHovering })
-}, 50)
+}
 
 // Context menu functionality
 const copyNodeData = () => {
@@ -406,58 +405,120 @@ onUnmounted(() => {
 .node-ports {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  gap: 12px;
+  position: absolute;
+  bottom: -16px; /* Position at the bottom border of the node */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: none; /* Allow clicks to pass through to ports */
+  padding: 0; /* Remove any padding */
 }
 
 .node-ports.ports-horizontal {
   justify-content: space-between;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .node-port {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 4px;
-  border-radius: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 2px solid #ffffff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  position: relative;
+  min-width: 60px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 25;
+  pointer-events: auto; /* Re-enable clicks on individual ports */
+}
+
+.node-port::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.node-port:hover::before {
+  left: 100%;
 }
 
 .node-port:hover {
-  background: rgba(0, 123, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.port-circle {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid #dee2e6;
-  transition: all 0.2s ease;
-}
-
-.circle-in {
-  background: #28a745;
+.port-in {
   border-color: #28a745;
+  background: linear-gradient(
+    135deg,
+    rgba(40, 167, 69, 0.1) 0%,
+    rgba(40, 167, 69, 0.05) 100%
+  );
 }
 
-.circle-out {
-  background: #007bff;
+.port-in:hover {
+  border-color: #1e7e34;
+  background: linear-gradient(
+    135deg,
+    rgba(40, 167, 69, 0.2) 0%,
+    rgba(40, 167, 69, 0.1) 100%
+  );
+}
+
+.port-out {
   border-color: #007bff;
+  background: white;
+}
+
+.port-out:hover {
+  border-color: #0056b3;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 123, 255, 0.2) 0%,
+    rgba(0, 123, 255, 0.1) 100%
+  );
 }
 
 .port-label {
-  font-size: 10px;
-  color: #6c757d;
+  font-size: 11px;
+  font-weight: 600;
+  color: #495057;
   text-align: center;
-  max-width: 60px;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.port-in .port-label {
+  color: #155724;
+}
+
+.port-out .port-label {
+  color: #004085;
+}
+
+.node-port:hover .port-label {
+  color: #212529;
 }
 
 /* Status indicator */
@@ -574,17 +635,18 @@ onUnmounted(() => {
   }
 
   .node-ports {
-    gap: 6px;
+    gap: 8px;
+    padding-top: 8px;
   }
 
-  .port-circle {
-    width: 10px;
-    height: 10px;
+  .node-port {
+    padding: 6px 12px;
+    min-width: 50px;
   }
 
   .port-label {
-    font-size: 9px;
-    max-width: 50px;
+    font-size: 10px;
+    max-width: 60px;
   }
 }
 </style>

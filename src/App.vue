@@ -28,22 +28,22 @@
         <!-- Custom node slots -->
         <template #node-trigger="{ node }">
           <div class="custom-trigger-content">
-            <p>🚀 Custom trigger content</p>
-            <small>Node ID: {{ node.id }}</small>
+            <p>🚀 {{ node.label }}</p>
+            <small>Start Process</small>
           </div>
         </template>
 
-        <template #node-decision="{ node }">
-          <div class="custom-decision-content">
-            <p>❓ Custom decision content</p>
-            <small>Status: {{ node.status }}</small>
+        <template #node-prompt="{ node }">
+          <div class="custom-prompt-content">
+            <p>❓ {{ node.label }}</p>
+            <small>Yes / No Decision</small>
           </div>
         </template>
 
         <template #node-action="{ node }">
           <div class="custom-action-content">
-            <p>⚡ Custom action content</p>
-            <small>Type: {{ node.type }}</small>
+            <p>⚡ {{ node.label }}</p>
+            <small>Action Item</small>
           </div>
         </template>
       </FlowChart>
@@ -106,96 +106,79 @@ const chartData = ref({
     {
       id: '1',
       type: 'trigger',
-      label: 'User Signup',
+      label: 'Trigger',
       status: 'success',
-      ports: [
-        { id: 'out1', label: 'Next', direction: 'out' },
-        { id: 'out2', label: 'Start', direction: 'out' },
-      ], // Multiple ports for trigger nodes
+      ports: [{ id: 'out1', label: 'Start', direction: 'out' }],
     },
     {
       id: '2',
-      type: 'decision',
-      label: 'Send Welcome Email?',
-      status: 'pending',
-      ports: [
-        { id: 'in1', label: 'Input', direction: 'in' },
-        { id: 'yes', label: 'Yes', direction: 'out' },
-        { id: 'no', label: 'No', direction: 'out' },
-        { id: 'maybe', label: 'Maybe', direction: 'out' },
-        { id: 'later', label: 'Later', direction: 'out' },
-      ],
+      type: 'action',
+      label: 'Action 1',
+      status: 'success',
+      ports: [],
     },
     {
       id: '3',
       type: 'action',
-      label: 'Send Welcome Email',
+      label: 'Action 2',
       status: 'success',
-      ports: [
-        { id: 'in1', label: 'Input', direction: 'in' },
-        { id: 'out1', label: 'Next', direction: 'out' },
-        { id: 'out2', label: 'Complete', direction: 'out' },
-      ],
+      ports: [],
     },
     {
       id: '4',
-      type: 'action',
-      label: 'Log to Database',
-      status: 'warning',
+      type: 'prompt',
+      label: 'Prompt',
+      status: 'pending',
       ports: [
-        { id: 'in1', label: 'Input', direction: 'in' },
-        { id: 'out1', label: 'Next', direction: 'out' },
-        { id: 'out2', label: 'Error', direction: 'out' },
+        { id: 'yes', label: 'Yes', direction: 'out' },
+        { id: 'no', label: 'No', direction: 'out' },
       ],
     },
     {
       id: '5',
-      type: 'prompt',
-      label: 'Send Reminder',
-      status: 'pending',
-      ports: [
-        { id: 'in1', label: 'Input', direction: 'in' },
-        { id: 'out1', label: 'Yes', direction: 'out' },
-        { id: 'out2', label: 'No', direction: 'out' },
-      ],
+      type: 'action',
+      label: 'Yes Action',
+      status: 'success',
+      ports: [],
     },
     {
       id: '6',
-      type: 'api',
-      label: 'Schedule Follow-up',
-      status: 'error',
-      ports: [
-        { id: 'in1', label: 'Input', direction: 'in' },
-        { id: 'out1', label: 'Success', direction: 'out' },
-        { id: 'out2', label: 'Failed', direction: 'out' },
-      ],
+      type: 'action',
+      label: 'No Action',
+      status: 'success',
+      ports: [],
     },
   ],
   edges: [
     {
       id: 'e1',
       from: { nodeId: '1', portId: 'out1' },
-      to: { nodeId: '2', portId: 'in1' },
+      to: { nodeId: '2' },
+      label: '',
     },
     {
       id: 'e2',
-      from: { nodeId: '2', portId: 'yes' },
-      to: { nodeId: '3', portId: 'in1' },
+      from: { nodeId: '2' },
+      to: { nodeId: '3' },
+      label: '',
     },
     {
       id: 'e3',
-      from: { nodeId: '2', portId: 'no' },
-      to: { nodeId: '4', portId: 'in1' },
+      from: { nodeId: '3' },
+      to: { nodeId: '4' },
+      label: '',
     },
     {
       id: 'e4',
-      from: { nodeId: '2', portId: 'maybe' },
-      to: { nodeId: '5', portId: 'in1' },
+      from: { nodeId: '4', portId: 'yes' },
+      to: { nodeId: '5' },
+      label: 'Yes',
     },
     {
       id: 'e5',
-      from: { nodeId: '2', portId: 'later' },
-      to: { nodeId: '6', portId: 'in1' },
+      from: { nodeId: '4', portId: 'no' },
+      to: { nodeId: '6' },
+      label: 'No',
     },
   ],
 })
@@ -208,10 +191,7 @@ const addNode = () => {
     type: 'action',
     label: `New Action ${chartData.value.nodes.length + 1}`,
     status: 'pending',
-    ports: [
-      { id: 'in1', label: 'Input', direction: 'in' },
-      { id: 'out1', label: 'Next', direction: 'out' },
-    ],
+    ports: [],
   }
 
   chartData.value.nodes.push(newNode)
@@ -221,8 +201,9 @@ const addNode = () => {
     const lastNode = chartData.value.nodes[chartData.value.nodes.length - 2]
     const newEdge = {
       id: `edge-${Date.now()}`,
-      from: { nodeId: lastNode.id, portId: 'out1' },
-      to: { nodeId: newNodeId, portId: 'in1' },
+      from: { nodeId: lastNode.id },
+      to: { nodeId: newNodeId },
+      label: '',
     }
     chartData.value.edges.push(newEdge)
   }
@@ -235,96 +216,79 @@ const resetChart = () => {
       {
         id: '1',
         type: 'trigger',
-        label: 'User Signup',
+        label: 'Trigger',
         status: 'success',
-        ports: [
-          { id: 'out1', label: 'Next', direction: 'out' },
-          { id: 'out2', label: 'Start', direction: 'out' },
-        ],
+        ports: [{ id: 'out1', label: 'Start', direction: 'out' }],
       },
       {
         id: '2',
-        type: 'decision',
-        label: 'Send Welcome Email?',
-        status: 'pending',
-        ports: [
-          { id: 'in1', label: 'Input', direction: 'in' },
-          { id: 'yes', label: 'Yes', direction: 'out' },
-          { id: 'no', label: 'No', direction: 'out' },
-          { id: 'maybe', label: 'Maybe', direction: 'out' },
-          { id: 'later', label: 'Later', direction: 'out' },
-        ],
+        type: 'action',
+        label: 'Action 1',
+        status: 'success',
+        ports: [],
       },
       {
         id: '3',
         type: 'action',
-        label: 'Send Welcome Email',
+        label: 'Action 2',
         status: 'success',
-        ports: [
-          { id: 'in1', label: 'Input', direction: 'in' },
-          { id: 'out1', label: 'Next', direction: 'out' },
-          { id: 'out2', label: 'Complete', direction: 'out' },
-        ],
+        ports: [],
       },
       {
         id: '4',
-        type: 'action',
-        label: 'Log to Database',
-        status: 'warning',
+        type: 'prompt',
+        label: 'Prompt',
+        status: 'pending',
         ports: [
-          { id: 'in1', label: 'Input', direction: 'in' },
-          { id: 'out1', label: 'Next', direction: 'out' },
-          { id: 'out2', label: 'Error', direction: 'out' },
+          { id: 'yes', label: 'Yes', direction: 'out' },
+          { id: 'no', label: 'No', direction: 'out' },
         ],
       },
       {
         id: '5',
-        type: 'prompt',
-        label: 'Send Reminder',
-        status: 'pending',
-        ports: [
-          { id: 'in1', label: 'Input', direction: 'in' },
-          { id: 'out1', label: 'Yes', direction: 'out' },
-          { id: 'out2', label: 'No', direction: 'out' },
-        ],
+        type: 'action',
+        label: 'Yes Action',
+        status: 'success',
+        ports: [],
       },
       {
         id: '6',
-        type: 'api',
-        label: 'Schedule Follow-up',
-        status: 'error',
-        ports: [
-          { id: 'in1', label: 'Input', direction: 'in' },
-          { id: 'out1', label: 'Success', direction: 'out' },
-          { id: 'out2', label: 'Failed', direction: 'out' },
-        ],
+        type: 'action',
+        label: 'No Action',
+        status: 'success',
+        ports: [],
       },
     ],
     edges: [
       {
         id: 'e1',
         from: { nodeId: '1', portId: 'out1' },
-        to: { nodeId: '2', portId: 'in1' },
+        to: { nodeId: '2' },
+        label: '',
       },
       {
         id: 'e2',
-        from: { nodeId: '2', portId: 'yes' },
-        to: { nodeId: '3', portId: 'in1' },
+        from: { nodeId: '2' },
+        to: { nodeId: '3' },
+        label: '',
       },
       {
         id: 'e3',
-        from: { nodeId: '2', portId: 'no' },
-        to: { nodeId: '4', portId: 'in1' },
+        from: { nodeId: '3' },
+        to: { nodeId: '4' },
+        label: '',
       },
       {
         id: 'e4',
-        from: { nodeId: '2', portId: 'maybe' },
-        to: { nodeId: '5', portId: 'in1' },
+        from: { nodeId: '4', portId: 'yes' },
+        to: { nodeId: '5' },
+        label: 'Yes',
       },
       {
         id: 'e5',
-        from: { nodeId: '2', portId: 'later' },
-        to: { nodeId: '6', portId: 'in1' },
+        from: { nodeId: '4', portId: 'no' },
+        to: { nodeId: '6' },
+        label: 'No',
       },
     ],
   }
@@ -455,7 +419,7 @@ const copyChartData = () => {
 
 /* Custom node content styles */
 .custom-trigger-content,
-.custom-decision-content,
+.custom-prompt-content,
 .custom-action-content {
   text-align: center;
   padding: 0.5rem;
@@ -465,14 +429,14 @@ const copyChartData = () => {
 }
 
 .custom-trigger-content p,
-.custom-decision-content p,
+.custom-prompt-content p,
 .custom-action-content p {
   margin: 0 0 0.5rem 0;
   font-weight: 500;
 }
 
 .custom-trigger-content small,
-.custom-decision-content small,
+.custom-prompt-content small,
 .custom-action-content small {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.75rem;

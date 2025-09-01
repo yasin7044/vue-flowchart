@@ -7,6 +7,17 @@
       fill="none"
       stroke-width="2"
     />
+    <!-- Edge label -->
+    <text
+      v-if="label"
+      :x="labelPosition.x"
+      :y="labelPosition.y"
+      class="edge-label"
+      text-anchor="middle"
+      dominant-baseline="middle"
+    >
+      {{ label }}
+    </text>
   </svg>
 </template>
 
@@ -41,6 +52,10 @@ const props = defineProps({
   type: {
     type: String,
     default: 'default',
+  },
+  label: {
+    type: String,
+    default: '',
   },
 })
 
@@ -92,7 +107,7 @@ const endY = computed(() => {
   )
 })
 
-// Generate straight SVG path
+// Generate clean SVG path
 const pathData = computed(() => {
   const x1 = startX.value
   const y1 = startY.value
@@ -102,7 +117,9 @@ const pathData = computed(() => {
   // Calculate control points for smooth bezier curve
   const midY = (y1 + y2) / 2
   const horizontalDistance = Math.abs(x2 - x1)
-  const controlOffset = Math.max(horizontalDistance * 0.3, 50) // Minimum 50px offset
+
+  // For port-to-node connections, use a more direct curve
+  const controlOffset = Math.max(horizontalDistance * 0.2, 30) // Reduced offset for cleaner connections
 
   // Use smooth bezier curve for better visual appeal
   return `M ${x1} ${y1} C ${x1} ${midY - controlOffset} ${x2} ${
@@ -116,6 +133,22 @@ const edgeClasses = computed(() => {
     'edge-success': props.type === 'success',
     'edge-error': props.type === 'error',
     'edge-warning': props.type === 'warning',
+  }
+})
+
+// Calculate label position (middle of the edge)
+const labelPosition = computed(() => {
+  // Calculate the middle point between from and to positions
+  const midX = (props.fromPosition.x + props.toPosition.x) / 2
+  const midY = (props.fromPosition.y + props.toPosition.y) / 2
+
+  // Convert to SVG coordinates (relative to SVG container)
+  const minX = Math.min(props.fromPosition.x, props.toPosition.x) - 10
+  const minY = Math.min(props.fromPosition.y, props.toPosition.y) - 10
+
+  return {
+    x: midX - minX,
+    y: midY - minY - 10, // Offset slightly above the line
   }
 })
 
@@ -165,5 +198,12 @@ const handleClick = (event) => {
 
 .edge-path:hover {
   stroke: #007bff;
+}
+
+.edge-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: #333333;
+  pointer-events: none;
 }
 </style>

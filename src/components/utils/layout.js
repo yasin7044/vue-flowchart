@@ -195,6 +195,8 @@ export function calculateVerticalLayout(nodes, edges, options = {}) {
  */
 export function calculatePortPositions(node, ports) {
   const nodeHeight = 120
+  const portHeight = 32 // Height of port div (8px padding * 2 + text height)
+  const portPadding = 8 // Horizontal padding of port div
 
   // Validate that node has a position
   if (
@@ -211,7 +213,7 @@ export function calculatePortPositions(node, ports) {
     const isInput = port.direction === 'in'
 
     if (isInput) {
-      // Input ports at top center
+      // Input ports at top center of node
       const x = node.position.x + (node.width || 200) / 2
       const y = node.position.y - nodeHeight / 2 + 10 // Top of node
 
@@ -220,31 +222,42 @@ export function calculatePortPositions(node, ports) {
         position: { x, y },
       }
     } else {
-      // All output ports at bottom of node, evenly distributed
+      // Output ports positioned at the center of their div boxes
       const outputPorts = ports.filter((p) => p.direction === 'out')
       const portCount = outputPorts.length
       const nodeWidth = node.width || 200
+      const portIndex = outputPorts.findIndex((p) => p.id === port.id)
 
       if (portCount === 1) {
         // Single output port at bottom center
         const x = node.position.x + nodeWidth / 2
-        const y = node.position.y + nodeHeight / 2 - 10 // Bottom of node
+        const y = node.position.y + nodeHeight / 2 + 16 + 16 // Bottom border + 16px offset + 16px to reach bottom of port block
 
         return {
           ...port,
           position: { x, y },
         }
       } else {
-        // Multiple output ports evenly distributed at bottom
-        const portSpacing = nodeWidth / (portCount + 1)
-        const startX = node.position.x
+        // Multiple output ports - position at bottom of each port div
+        // Calculate port positions to match the actual flexbox layout
+        const portWidth = 60 // Approximate width of each port div (8px padding * 2 + text width)
+        const portGap = 12 // Gap between ports (from CSS gap: 12px)
+        const totalPortsWidth = portCount * portWidth
+        const totalGaps = (portCount - 1) * portGap
+        const totalWidth = totalPortsWidth + totalGaps
 
-        const x = startX + (index + 1) * portSpacing
-        const y = node.position.y + nodeHeight / 2 - 10 // Bottom of node
+        // Center the ports within the node (matching flexbox justify-content: center)
+        const nodeCenterX = node.position.x + nodeWidth / 2
+        const portsStartX = nodeCenterX - totalWidth / 2
+
+        // Calculate the center of each port div
+        const portDivCenterX =
+          portsStartX + portIndex * (portWidth + portGap) + portWidth / 2
+        const y = node.position.y + nodeHeight / 2 + 16 + 16 // Bottom border + 16px offset + 16px to reach bottom of port block
 
         return {
           ...port,
-          position: { x, y },
+          position: { x: portDivCenterX, y },
         }
       }
     }
@@ -295,15 +308,47 @@ export function calculateEdgePositions(edges, nodes) {
       }
     }
 
-    // Handle regular nodes with ports - connect from center-bottom to center-top
-    const fromPosition = {
-      x: fromNode.position.x + (fromNode.width || 200) / 2, // Center-bottom of parent
-      y: fromNode.position.y + 60, // Bottom center of parent node
+    // Handle regular nodes with ports - connect from actual port positions
+    let fromPosition, toPosition
+
+    // Find the source port position
+    if (fromNode.ports && fromNode.ports.length > 0 && edge.from.portId) {
+      const sourcePort = fromNode.ports.find((p) => p.id === edge.from.portId)
+      if (sourcePort && sourcePort.position) {
+        fromPosition = sourcePort.position
+      } else {
+        // Fallback to center-bottom if port position not found
+        fromPosition = {
+          x: fromNode.position.x + (fromNode.width || 200) / 2,
+          y: fromNode.position.y + 60,
+        }
+      }
+    } else {
+      // Fallback to center-bottom if no ports or no portId specified
+      fromPosition = {
+        x: fromNode.position.x + (fromNode.width || 200) / 2,
+        y: fromNode.position.y + 60,
+      }
     }
 
-    const toPosition = {
-      x: toNode.position.x + (toNode.width || 200) / 2, // Center-top of child
-      y: toNode.position.y - 60, // Top center of child node
+    // Find the target port position
+    if (toNode.ports && toNode.ports.length > 0) {
+      const targetPort = toNode.ports.find((p) => p.id === edge.to.portId)
+      if (targetPort && targetPort.position) {
+        toPosition = targetPort.position
+      } else {
+        // Fallback to center-top if port position not found
+        toPosition = {
+          x: toNode.position.x + (toNode.width || 200) / 2,
+          y: toNode.position.y - 60,
+        }
+      }
+    } else {
+      // Fallback to center-top if no ports
+      toPosition = {
+        x: toNode.position.x + (toNode.width || 200) / 2,
+        y: toNode.position.y - 60,
+      }
     }
 
     return {
