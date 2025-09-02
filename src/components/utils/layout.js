@@ -48,14 +48,28 @@ export function calculateVerticalLayout(nodes, edges, options = {}) {
     return []
   }
 
-  // Step 2: Position root node at top-center
+  // Step 2: Position root node at top-center (only if no custom position)
   const rootWidth = calculateNodeWidth(rootNode)
-  positionedNodes.push({
-    ...rootNode,
-    position: { x: centerX - rootWidth / 2, y: startY }, // Position by left edge
-    level: 0,
-    width: rootWidth,
-  })
+  if (
+    rootNode.position &&
+    typeof rootNode.position.x === 'number' &&
+    typeof rootNode.position.y === 'number'
+  ) {
+    // Use custom position if provided
+    positionedNodes.push({
+      ...rootNode,
+      level: 0,
+      width: rootWidth,
+    })
+  } else {
+    // Calculate position
+    positionedNodes.push({
+      ...rootNode,
+      position: { x: centerX - rootWidth / 2, y: startY }, // Position by left edge
+      level: 0,
+      width: rootWidth,
+    })
+  }
   processedNodes.add(rootNode.id)
   nodeLevels.set(rootNode.id, 0)
 
@@ -118,17 +132,31 @@ export function calculateVerticalLayout(nodes, edges, options = {}) {
 
         // Calculate positions for children with perfect center alignment
         if (childCount === 1) {
-          // Single child: position directly below parent center
+          // Single child: position directly below parent center (only if no custom position)
           const child = children[0]
           const childWidth = calculateNodeWidth(child)
-          const childX = parentCenterX - childWidth / 2 // Center child on parent center
 
-          positionedNodes.push({
-            ...child,
-            position: { x: childX, y },
-            level: currentLevel,
-            width: childWidth,
-          })
+          if (
+            child.position &&
+            typeof child.position.x === 'number' &&
+            typeof child.position.y === 'number'
+          ) {
+            // Use custom position if provided
+            positionedNodes.push({
+              ...child,
+              level: currentLevel,
+              width: childWidth,
+            })
+          } else {
+            // Calculate position
+            const childX = parentCenterX - childWidth / 2 // Center child on parent center
+            positionedNodes.push({
+              ...child,
+              position: { x: childX, y },
+              level: currentLevel,
+              width: childWidth,
+            })
+          }
           positionedChildren.add(child.id)
         } else {
           // Multiple children: distribute horizontally with group center aligned to parent center
@@ -147,18 +175,31 @@ export function calculateVerticalLayout(nodes, edges, options = {}) {
           children.forEach((child, index) => {
             if (!positionedChildren.has(child.id)) {
               const childWidth = childWidths[index]
-              const childX = currentX
 
-              positionedNodes.push({
-                ...child,
-                position: { x: childX, y },
-                level: currentLevel,
-                width: childWidth,
-              })
+              if (
+                child.position &&
+                typeof child.position.x === 'number' &&
+                typeof child.position.y === 'number'
+              ) {
+                // Use custom position if provided
+                positionedNodes.push({
+                  ...child,
+                  level: currentLevel,
+                  width: childWidth,
+                })
+              } else {
+                // Calculate position
+                const childX = currentX
+                positionedNodes.push({
+                  ...child,
+                  position: { x: childX, y },
+                  level: currentLevel,
+                  width: childWidth,
+                })
+                // Move to next child position only when calculating
+                currentX += childWidth + horizontalSpacing
+              }
               positionedChildren.add(child.id)
-
-              // Move to next child position
-              currentX += childWidth + horizontalSpacing
             }
           })
         }
@@ -173,14 +214,29 @@ export function calculateVerticalLayout(nodes, edges, options = {}) {
   // Step 4: Handle any remaining unconnected nodes
   nodes.forEach((node) => {
     if (!processedNodes.has(node.id)) {
-      const y = startY + (currentLevel + 1) * (nodeHeight + nodeSpacing)
       const nodeWidth = calculateNodeWidth(node)
-      positionedNodes.push({
-        ...node,
-        position: { x: centerX - nodeWidth / 2, y },
-        level: currentLevel + 1,
-        width: nodeWidth,
-      })
+
+      if (
+        node.position &&
+        typeof node.position.x === 'number' &&
+        typeof node.position.y === 'number'
+      ) {
+        // Use custom position if provided
+        positionedNodes.push({
+          ...node,
+          level: currentLevel + 1,
+          width: nodeWidth,
+        })
+      } else {
+        // Calculate position
+        const y = startY + (currentLevel + 1) * (nodeHeight + nodeSpacing)
+        positionedNodes.push({
+          ...node,
+          position: { x: centerX - nodeWidth / 2, y },
+          level: currentLevel + 1,
+          width: nodeWidth,
+        })
+      }
     }
   })
 

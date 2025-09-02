@@ -1,10 +1,11 @@
-<script setup></script>
-
 <template>
   <div class="app">
     <header class="app-header">
       <h1>Vue Flowchart Engine</h1>
       <div class="header-controls">
+        <button @click="toggleSidebar" class="btn btn-secondary">
+          {{ sidebarCollapsed ? '📋' : '📋' }}
+        </button>
         <button @click="addNode" class="btn btn-primary">Add Node</button>
         <button @click="resetChart" class="btn btn-secondary">Reset</button>
         <button @click="toggleTheme" class="btn btn-theme">
@@ -13,41 +14,53 @@
       </div>
     </header>
 
-    <main class="app-main">
-      <FlowChart
-        :data="chartData"
-        :layout-options="layoutOptions"
-        :show-zoom-controls="true"
-        :enable-zoom="true"
-        :enable-pan="true"
-        @node-click="handleNodeClick"
-        @edge-click="handleEdgeClick"
-        @zoom-change="handleZoomChange"
-        @pan-change="handlePanChange"
-      >
-        <!-- Custom node slots -->
-        <template #node-trigger="{ node }">
-          <div class="custom-trigger-content">
-            <p>🚀 {{ node.label }}</p>
-            <small>Start Process</small>
-          </div>
-        </template>
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <Sidebar
+        :collapsed="sidebarCollapsed"
+        @drag-start="handleDragStart"
+        @drag-end="handleDragEnd"
+      />
 
-        <template #node-prompt="{ node }">
-          <div class="custom-prompt-content">
-            <p>❓ {{ node.label }}</p>
-            <small>Yes / No Decision</small>
-          </div>
-        </template>
+      <!-- Main content -->
+      <main class="app-main">
+        <FlowChart
+          :data="chartData"
+          :layout-options="layoutOptions"
+          :show-zoom-controls="true"
+          :enable-zoom="true"
+          :enable-pan="true"
+          :dragged-template="draggedTemplate"
+          @node-click="handleNodeClick"
+          @edge-click="handleEdgeClick"
+          @zoom-change="handleZoomChange"
+          @pan-change="handlePanChange"
+          @node-drop="handleNodeDrop"
+        >
+          <!-- Custom node slots -->
+          <template #node-trigger="{ node }">
+            <div class="custom-trigger-content">
+              <p>🚀 {{ node.label }}</p>
+              <small>Start Process</small>
+            </div>
+          </template>
 
-        <template #node-action="{ node }">
-          <div class="custom-action-content">
-            <p>⚡ {{ node.label }}</p>
-            <small>Action Item</small>
-          </div>
-        </template>
-      </FlowChart>
-    </main>
+          <template #node-prompt="{ node }">
+            <div class="custom-prompt-content">
+              <p>❓ {{ node.label }}</p>
+              <small>Yes / No Decision</small>
+            </div>
+          </template>
+
+          <template #node-action="{ node }">
+            <div class="custom-action-content">
+              <p>⚡ {{ node.label }}</p>
+              <small>Action Item</small>
+            </div>
+          </template>
+        </FlowChart>
+      </main>
+    </div>
 
     <!-- Info panel -->
     <div class="info-panel" v-if="selectedNode">
@@ -71,6 +84,7 @@
 import { ref, computed } from 'vue'
 import { usePreferredDark, useLocalStorage, useClipboard } from '@vueuse/core'
 import FlowChart from './components/FlowChart.vue'
+import Sidebar from './components/Sidebar.vue'
 
 // Theme management
 const isDark = usePreferredDark()
@@ -90,6 +104,8 @@ const selectedNode = ref(null)
 const zoomLevel = ref(1)
 const panX = ref(0)
 const panY = ref(0)
+const sidebarCollapsed = ref(false)
+const draggedTemplate = ref(null)
 
 // Layout options
 const layoutOptions = {
@@ -318,6 +334,181 @@ const handlePanChange = (panData) => {
   console.log('Pan changed:', panData)
 }
 
+// Drag and drop handlers
+const handleDragStart = (nodeTemplate) => {
+  console.log('Drag started:', nodeTemplate)
+  // Store the dragged template for the FlowChart component
+  draggedTemplate.value = nodeTemplate
+}
+
+const handleDragEnd = () => {
+  console.log('Drag ended')
+  // Clear the dragged template
+  draggedTemplate.value = null
+}
+
+const handleNodeDrop = (dropData) => {
+  const { template, position } = dropData
+
+  // Find the best position for the new node
+  const { bestPosition, sourceNode, targetNode } =
+    findBestNodePosition(position)
+
+  // Create new node from template
+  const newNodeId = `node-${Date.now()}`
+  const newNode = {
+    id: newNodeId,
+    type: template.type,
+    label: template.label,
+    status: 'pending',
+    ports: template.ports || [],
+    position: bestPosition,
+  }
+
+  // Add node to chart data
+  chartData.value.nodes.push(newNode)
+
+  // Create edges to connect the new node
+  createConnectingEdges(newNode, sourceNode, targetNode)
+
+  console.log('Node dropped and connected:', newNode)
+}
+
+// Find the best position for a new node based on drop location
+const findBestNodePosition = (dropPosition) => {
+  const nodes = chartData.value.nodes
+  const edges = chartData.value.edges
+
+  // Find the closest node to the drop position
+  let closestNode = null
+  let minDistance = Infinity
+
+  nodes.forEach((node) => {
+    if (node.position) {
+      const distance = Math.sqrt(
+        Math.pow(node.position.x - dropPosition.x, 2) +
+          Math.pow(node.position.y - dropPosition.y, 2)
+      )
+      if (distance < minDistance) {
+        minDistance = distance
+        closestNode = node
+      }
+    }
+  })
+
+  if (!closestNode) {
+    // If no nodes exist, place at drop position
+    return {
+      bestPosition: dropPosition,
+      sourceNode: null,
+      targetNode: null,
+    }
+  }
+
+  // Determine if we should place above or below the closest node
+  const isAbove = dropPosition.y < closestNode.position.y
+  const verticalOffset = 120 + 100 // node height + spacing
+
+  let bestPosition
+  let sourceNode
+  let targetNode
+
+  if (isAbove) {
+    // Place above the closest node
+    bestPosition = {
+      x: closestNode.position.x,
+      y: closestNode.position.y - verticalOffset,
+    }
+    sourceNode = null
+    targetNode = closestNode
+
+    // Find the node that connects TO the closest node
+    const incomingEdge = edges.find((edge) => edge.to.nodeId === closestNode.id)
+    if (incomingEdge) {
+      sourceNode = nodes.find((n) => n.id === incomingEdge.from.nodeId)
+    }
+  } else {
+    // Place below the closest node
+    bestPosition = {
+      x: closestNode.position.x,
+      y: closestNode.position.y + verticalOffset,
+    }
+    sourceNode = closestNode
+    targetNode = null
+
+    // Find the node that the closest node connects TO
+    const outgoingEdge = edges.find(
+      (edge) => edge.from.nodeId === closestNode.id
+    )
+    if (outgoingEdge) {
+      targetNode = nodes.find((n) => n.id === outgoingEdge.to.nodeId)
+    }
+  }
+
+  // Check if there are other nodes at the same level and adjust X position
+  const nodesAtSameLevel = nodes.filter(
+    (node) => node.position && Math.abs(node.position.y - bestPosition.y) < 50
+  )
+
+  if (nodesAtSameLevel.length > 0) {
+    // Find the rightmost node at this level
+    const rightmostNode = nodesAtSameLevel.reduce((rightmost, current) => {
+      if (!rightmost || current.position.x > rightmost.position.x) {
+        return current
+      }
+      return rightmost
+    })
+
+    // Place the new node to the right of the rightmost node
+    if (rightmostNode) {
+      bestPosition.x =
+        rightmostNode.position.x + (rightmostNode.width || 200) + 100
+    }
+  }
+
+  return { bestPosition, sourceNode, targetNode }
+}
+
+// Create edges to connect the new node
+const createConnectingEdges = (newNode, sourceNode, targetNode) => {
+  const edges = chartData.value.edges
+
+  if (sourceNode) {
+    // Connect source node to new node
+    const sourceEdge = {
+      id: `edge-${Date.now()}-1`,
+      from: { nodeId: sourceNode.id },
+      to: { nodeId: newNode.id },
+      label: '',
+    }
+    edges.push(sourceEdge)
+
+    // Remove the old edge from source to target (if it exists)
+    const oldEdgeIndex = edges.findIndex(
+      (edge) =>
+        edge.from.nodeId === sourceNode.id && edge.to.nodeId === targetNode?.id
+    )
+    if (oldEdgeIndex !== -1) {
+      edges.splice(oldEdgeIndex, 1)
+    }
+  }
+
+  if (targetNode) {
+    // Connect new node to target node
+    const targetEdge = {
+      id: `edge-${Date.now()}-2`,
+      from: { nodeId: newNode.id },
+      to: { nodeId: targetNode.id },
+      label: '',
+    }
+    edges.push(targetEdge)
+  }
+}
+
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
 // Copy chart data to clipboard
 const copyChartData = () => {
   copy(JSON.stringify(chartData.value, null, 2))
@@ -410,6 +601,12 @@ const copyChartData = () => {
 .btn-small {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
+}
+
+.app-layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 80px); /* Account for header height */
 }
 
 .app-main {

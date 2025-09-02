@@ -38,6 +38,39 @@
       </Node>
     </div>
 
+    <!-- Drop zone overlay -->
+    <div
+      v-if="isDragOver"
+      class="drop-zone-overlay"
+      @dragover="handleDragOver"
+      @drop="handleDrop"
+      @dragleave="handleDragLeave"
+    >
+      <div class="drop-zone-content">
+        <div class="drop-zone-icon">📥</div>
+        <div class="drop-zone-text">Drop node here</div>
+        <div class="drop-zone-position">
+          Position: ({{ Math.round(dropPosition.x) }},
+          {{ Math.round(dropPosition.y) }})
+        </div>
+        <div class="drop-zone-hint">
+          {{ getDropZoneHint() }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Node placement preview -->
+    <div
+      v-if="isDragOver && props.draggedTemplate"
+      class="node-preview"
+      :style="getPreviewStyle()"
+    >
+      <div class="preview-content">
+        <div class="preview-icon">{{ props.draggedTemplate.icon || '📋' }}</div>
+        <div class="preview-label">{{ props.draggedTemplate.label }}</div>
+      </div>
+    </div>
+
     <!-- Zoom controls -->
     <div class="zoom-controls" v-if="showZoomControls">
       <button
@@ -111,6 +144,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  draggedTemplate: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -119,6 +156,7 @@ const emit = defineEmits([
   'port-connect',
   'zoom-change',
   'pan-change',
+  'node-drop',
 ])
 
 // Container ref for size tracking
@@ -142,6 +180,10 @@ const { x: mouseX, y: mouseY } = useMouse()
 
 // Window size for responsive behavior
 const { width: windowWidth, height: windowHeight } = useWindowSize()
+
+// Drag and drop state
+const isDragOver = ref(false)
+const dropPosition = ref({ x: 0, y: 0 })
 
 // Local storage for user preferences
 const userPreferences = useLocalStorage('flowchart-preferences', {
@@ -332,6 +374,110 @@ const handleNodeClick = (nodeData) => {
 const handleEdgeClick = (edgeData) => {
   emit('edge-click', edgeData)
 }
+
+// Drag and drop handlers
+const handleDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+
+  if (!isDragOver.value) {
+    isDragOver.value = true
+  }
+
+  // Calculate drop position relative to the flowchart
+  const rect = containerRef.value.getBoundingClientRect()
+  const x = (event.clientX - rect.left - translateX.value) / scale.value
+  const y = (event.clientY - rect.top - translateY.value) / scale.value
+
+  dropPosition.value = { x, y }
+}
+
+const handleDrop = (event) => {
+  event.preventDefault()
+
+  try {
+    const nodeTemplate = JSON.parse(
+      event.dataTransfer.getData('application/json')
+    )
+
+    // Emit event to parent component to handle node creation
+    emit('node-drop', {
+      template: nodeTemplate,
+      position: dropPosition.value,
+    })
+
+    // Reset drag state
+    isDragOver.value = false
+  } catch (error) {
+    console.error('Failed to parse dropped node template:', error)
+    isDragOver.value = false
+  }
+}
+
+const handleDragLeave = (event) => {
+  // Only hide drop zone if we're actually leaving the container
+  if (!containerRef.value.contains(event.relatedTarget)) {
+    isDragOver.value = false
+  }
+}
+
+// Get hint text for drop zone based on current position
+const getDropZoneHint = () => {
+  if (
+    !dropPosition.value ||
+    !props.data.nodes ||
+    props.data.nodes.length === 0
+  ) {
+    return 'Drop to create first node'
+  }
+
+  const nodes = props.data.nodes
+  let closestNode = null
+  let minDistance = Infinity
+
+  nodes.forEach((node) => {
+    if (node.position) {
+      const distance = Math.sqrt(
+        Math.pow(node.position.x - dropPosition.value.x, 2) +
+          Math.pow(node.position.y - dropPosition.value.y, 2)
+      )
+      if (distance < minDistance) {
+        minDistance = distance
+        closestNode = node
+      }
+    }
+  })
+
+  if (!closestNode) {
+    return 'Drop to create first node'
+  }
+
+  const isAbove = dropPosition.value.y < closestNode.position.y
+  if (isAbove) {
+    return `Will insert above "${closestNode.label}"`
+  } else {
+    return `Will insert below "${closestNode.label}"`
+  }
+}
+
+// Get preview style for the node placement preview
+const getPreviewStyle = () => {
+  if (!dropPosition.value) return {}
+
+  return {
+    position: 'absolute',
+    left: `${dropPosition.value.x}px`,
+    top: `${dropPosition.value.y}px`,
+    transform: 'translate(-50%, -50%)',
+    zIndex: 1000,
+    pointerEvents: 'none',
+  }
+}
+
+// Drag and drop event listeners (moved here after function definitions)
+useEventListener(containerRef, 'dragover', handleDragOver, { passive: false })
+useEventListener(containerRef, 'drop', handleDrop)
+useEventListener(containerRef, 'dragleave', handleDragLeave)
 </script>
 
 <style scoped>
@@ -419,6 +565,92 @@ const handleEdgeClick = (edgeData) => {
 /* Ensure nodes are above edges */
 .flowchart > * {
   position: absolute;
+}
+
+/* Drop zone overlay */
+.drop-zone-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 123, 255, 0.1);
+  border: 2px dashed rgba(0, 123, 255, 0.5);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.drop-zone-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.drop-zone-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.drop-zone-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #007bff;
+  margin-bottom: 0.5rem;
+}
+
+.drop-zone-position {
+  font-size: 0.875rem;
+  color: #666;
+  font-family: monospace;
+}
+
+.drop-zone-hint {
+  font-size: 0.875rem;
+  color: #007bff;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 123, 255, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+/* Node placement preview */
+.node-preview {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px dashed #007bff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 123, 255, 0.3);
+  min-width: 120px;
+  text-align: center;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-icon {
+  font-size: 2rem;
+}
+
+.preview-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #007bff;
+  white-space: nowrap;
 }
 
 /* Responsive adjustments */
